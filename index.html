@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouncing Ball Game</title>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    font-family:Arial, sans-serif;
+    overflow:hidden;
+}
+
+#gameContainer{
+    position:relative;
+}
+
+canvas{
+    background:linear-gradient(#1a1a2e,#16213e);
+    border:4px solid white;
+    border-radius:10px;
+}
+
+#ui{
+    position:absolute;
+    top:10px;
+    left:10px;
+    color:white;
+    font-size:22px;
+    font-weight:bold;
+}
+
+#message{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    color:white;
+    text-align:center;
+    font-size:32px;
+    font-weight:bold;
+    display:none;
+}
+</style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <canvas id="game" width="800" height="500"></canvas>
+
+    <div id="ui">
+        Score: <span id="score">0</span>
+    </div>
+
+    <div id="message">
+        GAME OVER<br>
+        <span style="font-size:20px;">Press SPACE to Restart</span>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreText = document.getElementById("score");
+const message = document.getElementById("message");
+
+let score = 0;
+let gameOver = false;
+
+const paddle = {
+    width:120,
+    height:16,
+    x:340,
+    y:460,
+    speed:8
+};
+
+const ball = {
+    radius:12,
+    x:400,
+    y:250,
+    dx:5,
+    dy:-5
+};
+
+const keys = {};
+
+document.addEventListener("keydown",(e)=>{
+    keys[e.key.toLowerCase()] = true;
+
+    if(gameOver && e.code==="Space"){
+        restart();
+    }
+});
+
+document.addEventListener("keyup",(e)=>{
+    keys[e.key.toLowerCase()] = false;
+});
+
+function restart(){
+    score = 0;
+    scoreText.textContent = score;
+
+    paddle.x = 340;
+
+    ball.x = 400;
+    ball.y = 250;
+    ball.dx = 5 * (Math.random() > 0.5 ? 1 : -1);
+    ball.dy = -5;
+
+    gameOver = false;
+    message.style.display = "none";
+}
+
+function update(){
+
+    if(gameOver) return;
+
+    // Paddle movement
+    if(keys["arrowleft"] || keys["a"]){
+        paddle.x -= paddle.speed;
+    }
+
+    if(keys["arrowright"] || keys["d"]){
+        paddle.x += paddle.speed;
+    }
+
+    paddle.x = Math.max(0,
+        Math.min(canvas.width - paddle.width, paddle.x)
+    );
+
+    // Ball movement
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+
+    // Left/Right walls
+    if(ball.x - ball.radius <= 0 ||
+       ball.x + ball.radius >= canvas.width){
+        ball.dx *= -1;
+    }
+
+    // Ceiling
+    if(ball.y - ball.radius <= 0){
+        ball.dy *= -1;
+    }
+
+    // Paddle collision
+    if(
+        ball.y + ball.radius >= paddle.y &&
+        ball.y + ball.radius <= paddle.y + paddle.height &&
+        ball.x >= paddle.x &&
+        ball.x <= paddle.x + paddle.width &&
+        ball.dy > 0
+    ){
+        let hitPoint =
+            (ball.x - (paddle.x + paddle.width/2))
+            /(paddle.width/2);
+
+        ball.dx = hitPoint * 7;
+        ball.dy = -Math.abs(ball.dy);
+
+        score++;
+        scoreText.textContent = score;
+
+        // Slight speed increase
+        ball.dy *= 1.03;
+        ball.dx *= 1.03;
+    }
+
+    // Lose
+    if(ball.y - ball.radius > canvas.height){
+        gameOver = true;
+        message.style.display = "block";
+    }
+}
+
+function draw(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Ball glow
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#00ffff";
+
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+    ctx.fillStyle = "#00ffff";
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Paddle
+    ctx.fillStyle = "#ffcc00";
+    ctx.fillRect(
+        paddle.x,
+        paddle.y,
+        paddle.width,
+        paddle.height
+    );
+}
+
+function gameLoop(){
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
