@@ -3,17 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bouncing Ball Game</title>
+<title>Two Ball Bounce Challenge</title>
 
 <style>
+*{
+    box-sizing:border-box;
+}
+
 body{
     margin:0;
-    background:#111;
     display:flex;
     justify-content:center;
     align-items:center;
     height:100vh;
-    font-family:Arial, sans-serif;
+    background:#111827;
+    font-family:Arial,sans-serif;
     overflow:hidden;
 }
 
@@ -22,9 +26,9 @@ body{
 }
 
 canvas{
-    background:linear-gradient(#1a1a2e,#16213e);
     border:4px solid white;
-    border-radius:10px;
+    border-radius:12px;
+    background:linear-gradient(to bottom,#0f172a,#1e293b);
 }
 
 #ui{
@@ -43,25 +47,36 @@ canvas{
     transform:translate(-50%,-50%);
     color:white;
     text-align:center;
-    font-size:32px;
-    font-weight:bold;
     display:none;
+}
+
+#message h1{
+    margin:0;
+    font-size:48px;
+}
+
+#message p{
+    font-size:22px;
 }
 </style>
 </head>
 <body>
 
 <div id="gameContainer">
-    <canvas id="game" width="800" height="500"></canvas>
+
+    <canvas id="game" width="900" height="550"></canvas>
 
     <div id="ui">
         Score: <span id="score">0</span>
+        <br>
+        Lives: <span id="lives">2</span>
     </div>
 
     <div id="message">
-        GAME OVER<br>
-        <span style="font-size:20px;">Press SPACE to Restart</span>
+        <h1>GAME OVER</h1>
+        <p>Press SPACE to Restart</p>
     </div>
+
 </div>
 
 <script>
@@ -69,34 +84,49 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const scoreText = document.getElementById("score");
+const livesText = document.getElementById("lives");
 const message = document.getElementById("message");
 
 let score = 0;
+let lives = 2;
 let gameOver = false;
 
 const paddle = {
-    width:120,
-    height:16,
-    x:340,
-    y:460,
-    speed:8
+    width:150,
+    height:18,
+    x:375,
+    y:510,
+    speed:10
 };
 
-const ball = {
-    radius:12,
-    x:400,
+const balls = [
+{
+    x:300,
     y:250,
+    radius:12,
     dx:5,
-    dy:-5
-};
+    dy:-5,
+    color:"#00ffff",
+    active:true
+},
+{
+    x:600,
+    y:250,
+    radius:12,
+    dx:-5,
+    dy:-5,
+    color:"#ff66ff",
+    active:true
+}
+];
 
 const keys = {};
 
 document.addEventListener("keydown",(e)=>{
     keys[e.key.toLowerCase()] = true;
 
-    if(gameOver && e.code==="Space"){
-        restart();
+    if(gameOver && e.code === "Space"){
+        restartGame();
     }
 });
 
@@ -104,26 +134,42 @@ document.addEventListener("keyup",(e)=>{
     keys[e.key.toLowerCase()] = false;
 });
 
-function restart(){
+function restartGame(){
+
     score = 0;
-    scoreText.textContent = score;
-
-    paddle.x = 340;
-
-    ball.x = 400;
-    ball.y = 250;
-    ball.dx = 5 * (Math.random() > 0.5 ? 1 : -1);
-    ball.dy = -5;
-
+    lives = 2;
     gameOver = false;
+
+    scoreText.textContent = score;
+    livesText.textContent = lives;
+
+    paddle.x = 375;
+
+    balls[0] = {
+        x:300,
+        y:250,
+        radius:12,
+        dx:5,
+        dy:-5,
+        color:"#00ffff",
+        active:true
+    };
+
+    balls[1] = {
+        x:600,
+        y:250,
+        radius:12,
+        dx:-5,
+        dy:-5,
+        color:"#ff66ff",
+        active:true
+    };
+
     message.style.display = "none";
 }
 
-function update(){
+function updatePaddle(){
 
-    if(gameOver) return;
-
-    // Paddle movement
     if(keys["arrowleft"] || keys["a"]){
         paddle.x -= paddle.speed;
     }
@@ -132,21 +178,27 @@ function update(){
         paddle.x += paddle.speed;
     }
 
-    paddle.x = Math.max(0,
-        Math.min(canvas.width - paddle.width, paddle.x)
-    );
+    if(paddle.x < 0) paddle.x = 0;
 
-    // Ball movement
+    if(paddle.x + paddle.width > canvas.width){
+        paddle.x = canvas.width - paddle.width;
+    }
+}
+
+function updateBall(ball){
+
+    if(!ball.active) return;
+
     ball.x += ball.dx;
     ball.y += ball.dy;
 
-    // Left/Right walls
+    // Side walls
     if(ball.x - ball.radius <= 0 ||
        ball.x + ball.radius >= canvas.width){
         ball.dx *= -1;
     }
 
-    // Ceiling
+    // Top wall
     if(ball.y - ball.radius <= 0){
         ball.dy *= -1;
     }
@@ -159,45 +211,55 @@ function update(){
         ball.x <= paddle.x + paddle.width &&
         ball.dy > 0
     ){
-        let hitPoint =
-            (ball.x - (paddle.x + paddle.width/2))
-            /(paddle.width/2);
 
-        ball.dx = hitPoint * 7;
+        let hit =
+        (ball.x - (paddle.x + paddle.width/2))
+        /(paddle.width/2);
+
+        ball.dx = hit * 8;
+
         ball.dy = -Math.abs(ball.dy);
 
         score++;
         scoreText.textContent = score;
 
-        // Slight speed increase
-        ball.dy *= 1.03;
-        ball.dx *= 1.03;
+        // Gradually speed up
+        ball.dx *= 1.02;
+        ball.dy *= 1.02;
     }
 
-    // Lose
+    // Ball lost
     if(ball.y - ball.radius > canvas.height){
-        gameOver = true;
-        message.style.display = "block";
+
+        ball.active = false;
+        lives--;
+
+        livesText.textContent = lives;
+
+        if(lives <= 0){
+            gameOver = true;
+            message.style.display = "block";
+        }
     }
 }
 
-function draw(){
+function drawBackground(){
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
 
-    // Ball glow
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "#00ffff";
+    for(let x=0;x<canvas.width;x+=40){
+        ctx.fillRect(x,0,1,canvas.height);
+    }
 
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
-    ctx.fillStyle = "#00ffff";
-    ctx.fill();
+    for(let y=0;y<canvas.height;y+=40){
+        ctx.fillRect(0,y,canvas.width,1);
+    }
+}
 
-    ctx.shadowBlur = 0;
+function drawPaddle(){
 
-    // Paddle
-    ctx.fillStyle = "#ffcc00";
+    ctx.fillStyle = "#ffd700";
+
     ctx.fillRect(
         paddle.x,
         paddle.y,
@@ -206,9 +268,59 @@ function draw(){
     );
 }
 
+function drawBalls(){
+
+    balls.forEach(ball=>{
+
+        if(!ball.active) return;
+
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = ball.color;
+
+        ctx.beginPath();
+        ctx.arc(
+            ball.x,
+            ball.y,
+            ball.radius,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+    });
+}
+
+function update(){
+
+    if(gameOver) return;
+
+    updatePaddle();
+
+    balls.forEach(updateBall);
+}
+
+function draw(){
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    drawBackground();
+    drawPaddle();
+    drawBalls();
+}
+
 function gameLoop(){
+
     update();
     draw();
+
     requestAnimationFrame(gameLoop);
 }
 
